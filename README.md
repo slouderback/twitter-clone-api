@@ -1,6 +1,6 @@
 # twitter-clone-api
 
-Tu run this do 
+To run this do 
 ```
 npm install
 nodemon server
