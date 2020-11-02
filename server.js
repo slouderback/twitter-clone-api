@@ -16,9 +16,9 @@ connection.once("open", () => {
 	console.log("MongoDB database connection established successfully");
 });
 
-const exercisesRouter = require("./routes/tweet");
+const tweetRouter = require("./routes/tweet");
 const usersRouter = require("./routes/users");
-app.use('/exercises', exercisesRouter);
+app.use('/tweet', tweetRouter);
 app.use("/users", usersRouter);
 
 app.listen(port, () => {
