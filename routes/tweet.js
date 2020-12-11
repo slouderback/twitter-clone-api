@@ -9,13 +9,13 @@ router.route('/').get((req, res) => {
 
 router.route('/add').post((req, res) => {
   const userID = req.body.userID;
-  const date = Date.parse(req.body.date);
-  const body = req.body.body;
+  // const date = Date.parse(req.body.date);
+  const tweetBody = req.body.tweetBody;
 
   const newTweet = new Tweet({
     userID,
-    date,
-    body,
+    // date,
+    tweetBody,
   });
 
   newTweet.save()

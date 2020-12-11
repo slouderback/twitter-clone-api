@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 
 const tweetSchema = new Schema({
   userID: { type: String, required: true },
-  date: { type: Date, required: true },
-  body: { type: String, required: true },
+  // date: { type: Date, required: true },
+  tweetBody: { type: String, required: true },
 }, {
   timestamps: true,
 });
