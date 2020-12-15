@@ -14,6 +14,7 @@ const userSchema = new Schema(
 		password: { type: String, required: true },
 		birthdate: { type: String, required: true }, //can store it as a string with delimiters for one query access
 		name: { type: String, required: true }, // screen name
+		handle: { type: String, required: true },
 
 		tweetsMade: [{
 			tweetUUID: String
