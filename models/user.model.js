@@ -15,21 +15,48 @@ const userSchema = new Schema(
 		birthdate: { type: String, required: true }, //can store it as a string with delimiters for one query access
 		name: { type: String, required: true }, // screen name
 
-		tweetsMade: [{ tweetUUID: { type: String } }], //array of tweetUUIDs since we want all the tweets a use has made
-		retweets: [{ tweetUUID: { type: String } }], //same as tweetsMade but only for retweets. Retweets ARE TWEETS but sometimes content-less
-		draftedTweets: [{ content: { type: String }, dateDrafted: { type: Date } }],
-		likedTweets: [{ tweetUUID: { type: String }, date: { type: Date } }],
+		tweetsMade: [{
+			tweetUUID: String
+		}], //array of tweetUUIDs since we want all the tweets a use has made
+		retweets: [{
+			tweetUUID: String
+		}], //same as tweetsMade but only for retweets. Retweets ARE TWEETS but sometimes content-less
+		draftedTweets: [{
+			content: String,
+			dateDrafted: { type: Date }
+		}],
+
+		likedTweets: [{
+			tweetUUID: String,
+			date: { type: Date }
+		}],
+
 		usersFollowing: [
 			{
-				userUUID: { type: String }, date: { type: Date },
-				isMuted: { type: Boolean }, notificationsOn: { type: Boolean }
+				userUUID: String,
+				date: { type: Date },
+				isMuted: { type: Boolean }, //muted users diff field
+				notificationsOn: { type: Boolean }
 			}],
-		followedByUsers: [{ userUUID: { type: String }, date: { type: Date } }],
-		blockedUsers: [{ userUUID: { type: String }, date: { type: Date } }],
-		bookmarkedTweets: [{ tweetUUID: { type: String }, date: { type: Date } }],
-		profilePhotoUrl: { type: String },
-		coverPhotoUrl: { type: String },
 
+		followedByUsers: [{
+			userUUID: String,
+			date: { type: Date }
+		}],
+
+		blockedUsers: [{
+			userUUID: String,
+			date: { type: Date }
+		}],
+
+		bookmarkedTweets: [{
+			tweetUUID: String,
+			date: { type: Date }
+		}],
+
+		profilePhotoUrl: String,
+		coverPhotoUrl: String,
+		pinnedTweet: { tweetUUID: String },
 		//need to store messaging data but idk how to do that just yet
 
 	},

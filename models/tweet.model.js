@@ -17,7 +17,9 @@ const tweetSchema = new Schema(
     //a tweet in and of itself and store it with the value 'retweet'; can also have value 'comment' or 'tweet' and shit like that?
     //Perhaps we store only uuid and date here and then in the user's model, we store tweetsRetweeted and that holds a json of a retweet and
     //the likes and comments it got? 
-    retweetedBy: [{ userUUID: { type: String }, date: { type: Date } }], //holds who retweeted, and the date it was retweeted
+    retweetedNoComment: [{ userUUID: { type: String }, date: { type: Date } }], //holds who retweeted, and the date it was retweeted
+
+    // retweetedWithComment: [{tweetUUID : {type: String}, userUUID: {}}] think about this
     sharedBy: [{ userUUID: { type: String }, Date: { type: Date }, sharedThrough: { type: String } }], //sharedThrough holds whether it was the 'dm' or 'added to bookmarks' or 'copy link' options
     images: [
       {
