@@ -72,6 +72,39 @@ router.route("/addRetweet").post((req, res) => {
     .catch((err) => res.status(400).json("Error: " + err));
 })
 
+
+
+/**
+ * Returns whether a user has retweeted a tweet yet
+ */
+router.route("/isRetweeted").get((req, res) => {
+
+  var noComment = false;
+  Tweet.find({ _id: (new ObjectID(req.query.tweetUUID)), "retweetedNoComment.userUUID": req.query.userID })
+    .then((tweet) => {
+      if (tweet.length == 0) {
+        Tweet.find({ _id: (new ObjectID(req.query.tweetUUID)), "retweetedWithComment.userUUID": req.query.userID })
+          .then((tweet) => {
+            if (tweet.length != 0) {
+              res.json("true");
+
+            } else {
+              res.json("false");
+
+            }
+
+          }).catch((error) => res.status(400).json("Error: " + error));
+
+      } else {
+
+        res.json("true");
+
+      }
+
+    }).catch((error) => res.status(400).json("Error: " + error));
+})
+
+
 router.route("/addRetweetWithNoComment").post((req, res) => {
 
   //check if retweeted alrdy, if not, retweet, if so, unretweet
