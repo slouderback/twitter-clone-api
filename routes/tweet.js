@@ -12,6 +12,13 @@ router.route("/getUserTweets").get((req, res) => {
     .catch((err) => res.status(400).json("Error: " + err));
 });
 
+router.route("/getTweet").get((req, res) => {
+
+  Tweet.find({ _id: req.query.tweetUUID })
+    .then((tweets) => res.json(tweets))
+    .catch((err) => res.status(400).json("Error: " + err));
+});
+
 
 
 
@@ -25,10 +32,12 @@ router.route("/getUserTweets").get((req, res) => {
  * 
  * 
  * Nested because it needs to be atomic.
+ * 
+ * 
+ * Retweet with comment only
  */
 router.route("/addRetweet").post((req, res) => {
 
-  if (req.body.tweetBody == "") res.json("fk off");
 
   const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
 
@@ -61,6 +70,74 @@ router.route("/addRetweet").post((req, res) => {
 
     })
     .catch((err) => res.status(400).json("Error: " + err));
+})
+
+router.route("/addRetweetWithNoComment").post((req, res) => {
+
+  //check if retweeted alrdy, if not, retweet, if so, unretweet
+  //first add userid to retweet retweetswithnocomment
+  //then increment tweet retweetswithnocomment
+
+  //then add tweetid to user retweets
+
+  const retweetUserID = (new ObjectID(req.body.userID));
+  const tweetUUID = req.body.tweetUUID;
+
+  Tweet.find({ _id: (new ObjectID(tweetUUID)), "retweetedNoComment.userUUID": req.body.userID })
+    .then((retweet) => {
+
+      if (retweet.length == 0) {
+
+
+        User.update(
+          { _id: retweetUserID }, //arguments object
+          { $push: { retweets: { tweetUUID: tweetUUID } } }
+        ).then(() => {
+
+          Tweet.update(
+            { _id: (new ObjectID(tweetUUID)) },
+            { $push: { retweetedNoComment: { userUUID: retweetUserID } }, $inc: { numOfRetweetsWithNoComment: 1 } }
+          ).then(() => {
+
+            res.json("Retweet documented!");
+          }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove retweet from tweet stats
+
+        }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove retweet from user
+
+
+
+
+
+
+      } else {
+
+
+        User.update(
+          { _id: retweetUserID }, //arguments object
+          { $pull: { retweets: { tweetUUID: tweetUUID } } }
+        ).then(() => {
+
+          Tweet.update(
+            { _id: (new ObjectID(tweetUUID)) },
+            { $pull: { retweetedNoComment: { userUUID: retweetUserID } }, $inc: { numOfRetweetsWithNoComment: -1 } }
+          ).then(() => {
+
+            res.json("Retweet removed!");
+          }).catch((err) => res.status(400).json("Error: " + err));
+
+        }).catch((err) => res.status(400).json("Error: " + err));
+
+
+      }
+
+
+    })
+    .catch((err) => res.status(400).json("Error: " + err));
+
+
+
+
+
 
 
 
