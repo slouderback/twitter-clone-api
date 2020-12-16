@@ -13,28 +13,30 @@ router.route("/getUserTweets").get((req, res) => {
 });
 
 
-/**
- * How to add data to array fields
- * 
- * Tweet.update(
-    { _id: user object id }, 
-    { $push: { array: array data } },
-    done
-);
- */
 
+
+/**
+ * Called when making a retweet
+ * 
+ * First creates the retweet as a normal tweet. Then, if successfully made, updates
+ * the user who made the retweet with the fact that they made a retweet
+ * 
+ * Then, if this succeeds, updates the retweeted tweet with the id of the new retweet
+ * 
+ * 
+ * Nested because it needs to be atomic.
+ */
 router.route("/addRetweet").post((req, res) => {
 
-  if (req.body.tweetBody == "") return false;
+  if (req.body.tweetBody == "") res.json("fk off");
 
-  const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody };
+  const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
+
 
   const retweetUserID = (new ObjectID(req.body.userID));
   const tweetUUID = (new ObjectID(req.body.tweetUUID));
 
   const newRetweet = new Tweet(rt);
-
-
 
 
   newRetweet
@@ -49,13 +51,13 @@ router.route("/addRetweet").post((req, res) => {
 
         Tweet.update(
           { _id: tweetUUID },
-          { $push: { retweetedWithComment: { tweetUUID: newRetweet._id, userUUID: newRetweet.userID } } }
+          { $push: { retweetedWithComment: { tweetUUID: newRetweet._id, userUUID: newRetweet.userID } }, $inc: { numOfRetweetsWithComment: 1 } }
         ).then(() => {
 
           res.json("Retweet documented!");
-        }).catch((err) => res.status(400).json("Error: " + err));
+        }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove tweet from db and from user
 
-      }).catch((err) => res.status(400).json("Error: " + err));
+      }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove new tweet from tweets table
 
     })
     .catch((err) => res.status(400).json("Error: " + err));
@@ -65,10 +67,58 @@ router.route("/addRetweet").post((req, res) => {
 })
 
 
+router.route("/like").post((req, res) => {
+
+  const inputTweetUUID = req.body.tweetUUID;
+
+  const userUUID = req.body.userID;
+
+  User.update(
+    { _id: (new ObjectID(userUUID)) },
+    { $push: { likedTweets: { tweetUUID: inputTweetUUID } } }
+  ).then(() => {
+
+    Tweet.update(
+      { _id: (new ObjectID(inputTweetUUID)) },
+      { $push: { likedBy: { userUUID: userUUID } }, $inc: { numOfLikes: 1 } }
+    ).then(() => res.json("Tweet updated likes"))
+      .catch((err) => res.status(400).json("Error: " + err));
+  })
+    .catch((err) => res.status(400).json("Error: " + err));
+
+})
+
+
+router.route("/unlike").post((req, res) => {
+
+  const inputTweetUUID = req.body.tweetUUID;
+
+  const userUUID = req.body.userID;
+
+  User.update(
+    { _id: (new ObjectID(userUUID)) },
+    { $pull: { likedTweets: { tweetUUID: inputTweetUUID } } }
+  ).then(() => {
+
+    Tweet.update(
+      { _id: (new ObjectID(inputTweetUUID)) },
+      { $pull: { likedBy: { userUUID: userUUID } }, $inc: { numOfLikes: -1 } }
+    ).then(() => res.json("Tweet updated likes"))
+      .catch((err) => res.status(400).json("Error: " + err));
+  })
+    .catch((err) => res.status(400).json("Error: " + err));
+
+})
+
+
+router.route("/isLiked").get((req, res) => {
 
 
 
-
+  Tweet.find({ "likedBy.userUUID": req.query.userID, _id: (new ObjectID(req.query.tweetUUID)) })
+    .then((like) => res.json(like.length))
+    .catch((err) => res.status(400).json("Error: " + err));
+})
 
 
 
@@ -79,7 +129,10 @@ router.route("/addRetweet").post((req, res) => {
 
 router.route("/add").post((req, res) => {
 
-  const newTweet = new Tweet(req.body);
+  const tweet = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
+
+
+  const newTweet = new Tweet(tweet);
 
   newTweet
     .save()
