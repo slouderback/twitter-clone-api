@@ -23,9 +23,10 @@ router.route("/getUserTweets").get((req, res) => {
 );
  */
 
-router.route("/addRetweet").post((req, rest) => {
+router.route("/addRetweet").post((req, res) => {
 
   if (req.body.tweetBody == "") return false;
+
   const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody };
 
   const retweetUserID = (new ObjectID(req.body.userID));
@@ -39,29 +40,22 @@ router.route("/addRetweet").post((req, rest) => {
   newRetweet
     .save()
     .then(() => {
-      res.json("Retweet added!");
 
-      const newRetweetUserId = (new ObjectID(newRetweet.userID));
-      const newTweetID = (new ObjectID(newRetweet._id));
 
       User.update(
-        { _id: newRetweetUserId },
-        { $push: { tweetsMade: newRetweet._id } }
+        { _id: retweetUserID }, //arguments object
+        { $push: { retweets: { tweetUUID: newRetweet._id } } }
       ).then(() => {
-        res.json("Tweet added to user");
+
+        Tweet.update(
+          { _id: tweetUUID },
+          { $push: { retweetedWithComment: { tweetUUID: newRetweet._id, userUUID: newRetweet.userID } } }
+        ).then(() => {
+
+          res.json("Retweet documented!");
+        }).catch((err) => res.status(400).json("Error: " + err));
 
       }).catch((err) => res.status(400).json("Error: " + err));
-
-
-      var retweet = { tweetUUID: newRetweet._id, userUUID: newRetweet.userID };
-
-      Tweet.update(
-        { _id: (new ObjectID(tweetUUID)) },
-        { $push: { retweetedWithComment: retweet } }
-      ).then(() => {
-        res.json("Retweet documented!");
-      }).catch((err) => res.status(400).json("Error: " + err));
-
 
     })
     .catch((err) => res.status(400).json("Error: " + err));
