@@ -3,15 +3,35 @@ let Tweet = require("../models/tweet.model");
 let User = require("../models/user.model");
 var ObjectID = require('mongodb').ObjectID;
 
+
+/**
+ * GET handler which takes in a query with a userID and returns all the tweets 
+ * that that user had made
+ * 
+ * For GET request, req.query
+ * For POST request,  req.body
+ * 
+ * passing in req.query = passing in {userID : "userid", ..}
+ * 
+ * {params}: userID json object
+ */
 router.route("/getUserTweets").get((req, res) => {
 
 
 
-  Tweet.find(req.query).sort('-createdAt')
-    .then((tweets) => res.json(tweets))
+  //Parms are userID => {userID: userID}
+  Tweet.find({ userID: req.query.userID }).sort('-createdAt') //.sort('-createAt) = the '-' means descending
+    .then((tweet) => res.json(tweet))
     .catch((err) => res.status(400).json("Error: " + err));
 });
 
+
+
+/**
+ * Takes in a tweet object ID and returns the tweet
+ * 
+ * {params} : { _id : tweetUUID }
+ */
 router.route("/getTweet").get((req, res) => {
 
   Tweet.find({ _id: req.query.tweetUUID })
@@ -36,7 +56,7 @@ router.route("/getTweet").get((req, res) => {
  * 
  * Retweet with comment only
  */
-router.route("/addRetweet").post((req, res) => {
+router.route("/addRetweetWithComment").post((req, res) => {
 
 
   const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
@@ -76,6 +96,8 @@ router.route("/addRetweet").post((req, res) => {
 
 /**
  * Returns whether a user has retweeted a tweet yet
+ * 
+ * Used for checking whether the frontend retweet component is shown as activated or not
  */
 router.route("/isRetweeted").get((req, res) => {
 
