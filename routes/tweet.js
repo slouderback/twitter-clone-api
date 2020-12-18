@@ -1,7 +1,10 @@
 const router = require("express").Router();
 let Tweet = require("../models/tweet.model");
 let User = require("../models/user.model");
+
+var xss = require('xss');
 var ObjectID = require('mongodb').ObjectID;
+
 
 
 /**
@@ -17,10 +20,11 @@ var ObjectID = require('mongodb').ObjectID;
  */
 router.route("/getUserTweets").get((req, res) => {
 
+  var cleanUserID = xss(req.query.userID);
 
 
   //Parms are userID => {userID: userID}
-  Tweet.find({ userID: req.query.userID }).sort('-createdAt') //.sort('-createAt) = the '-' means descending
+  Tweet.find({ userID: cleanUserID }).sort('-createdAt') //.sort('-createAt) = the '-' means descending
     .then((tweet) => res.json(tweet))
     .catch((err) => res.status(400).json("Error: " + err));
 });
@@ -34,7 +38,10 @@ router.route("/getUserTweets").get((req, res) => {
  */
 router.route("/getTweet").get((req, res) => {
 
-  Tweet.find({ _id: req.query.tweetUUID })
+  const cleanTweetUUID = xss(req.query.tweetUUID);
+
+
+  Tweet.find({ _id: cleanTweetUUID })
     .then((tweets) => res.json(tweets))
     .catch((err) => res.status(400).json("Error: " + err));
 });
@@ -58,25 +65,29 @@ router.route("/getTweet").get((req, res) => {
  */
 router.route("/addRetweetWithComment").post((req, res) => {
 
+  const cleanUserUUID = xss(req.body.userID);
+  const cleanTweetUUID = xss(req.body.tweetUUID);
+  const cleanTweetBody = xss(req.body.tweetBody);
 
-  const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
+  const retweetUserIDObject = (new ObjectID(cleanUserUUID));
+  const tweetIDObject = (new ObjectID(cleanTweetUUID));
 
-  const retweetUserID = (new ObjectID(req.body.userID));
-  const tweetUUID = (new ObjectID(req.body.tweetUUID));
 
-  const newRetweet = new Tweet(rt);
+  const retweetObject = { userID: cleanUserUUID, tweetBody: cleanTweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
+
+  const newRetweet = new Tweet(retweetObject);
 
   newRetweet
     .save()
     .then(() => {
       User.update(
-        { _id: retweetUserID }, //arguments object
+        { _id: retweetUserIDObject }, //arguments object
         { $push: { retweets: { tweetUUID: newRetweet._id } } }
       ).then(() => {
 
         Tweet.update(
-          { _id: tweetUUID },
-          { $push: { retweetedWithComment: { tweetUUID: newRetweet._id, userUUID: newRetweet.userID } }, $inc: { numOfRetweetsWithComment: 1 } }
+          { _id: tweetIDObject },
+          { $push: { retweetedWithComment: { tweetUUID: newRetweet._id, userUUID: cleanUserUUID } }, $inc: { numOfRetweetsWithComment: 1 } }
         ).then(() => {
 
           res.json("Retweet documented!");
@@ -97,13 +108,17 @@ router.route("/addRetweetWithComment").post((req, res) => {
  */
 router.route("/isRetweeted").get((req, res) => {
 
-  var noComment = false;
-  Tweet.find({ _id: (new ObjectID(req.query.tweetUUID)), "retweetedNoComment.userUUID": req.query.userID })
+  const cleanTweetUUID = xss(req.query.tweetUUID);
+  const cleanUserID = xss(req.query.userID);
+
+  Tweet.find({ _id: (new ObjectID(cleanTweetUUID)), "retweetedNoComment.userUUID": cleanUserID })
     .then((tweet) => {
+
+      //if returned array of objects is empty; edge case to skip searching if we retweeted
       if (tweet.length == 0) {
-        Tweet.find({ _id: (new ObjectID(req.query.tweetUUID)), "retweetedWithComment.userUUID": req.query.userID })
+        Tweet.find({ _id: (new ObjectID(cleanTweetUUID)), "retweetedWithComment.userUUID": cleanUserID })
           .then((tweet) => {
-            if (tweet.length != 0) {
+            if (tweet.length != 0) { //if retweet found for this tweet by this user, then return true, is retweeted
               res.json("true");
 
             } else {
@@ -130,24 +145,29 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
   //then increment tweet retweetswithnocomment
 
   //then add tweetid to user retweets
+  const cleanTweetUUID = xss(req.body.tweetUUID);
+  const cleanUserID = xss(req.body.userID);
 
-  const retweetUserID = (new ObjectID(req.body.userID));
-  const tweetUUID = req.body.tweetUUID;
 
-  Tweet.find({ _id: (new ObjectID(tweetUUID)), "retweetedNoComment.userUUID": req.body.userID })
+  Tweet.find({ _id: (new ObjectID(cleanTweetUUID)), "retweetedNoComment.userUUID": cleanUserID })
     .then((retweet) => {
 
+      //handles if not already retweeted with no comment
       if (retweet.length == 0) {
 
 
+        //where a user with inputted userID, push the tweet of tweetUUID into their retweets
         User.update(
-          { _id: retweetUserID }, //arguments object
-          { $push: { retweets: { tweetUUID: tweetUUID } } }
+          { _id: (new ObjectID(cleanUserID)) }, //arguments object
+          { $push: { retweets: { tweetUUID: cleanTweetUUID } } }
         ).then(() => {
 
+          //if push succeeds, we update Tweet document where id is of said retweeted tweet with the following
+          //retweetedNoComment gains a new array entry of the user who retweeted
+          //numofRetweetsWithNoComment increments by 1
           Tweet.update(
-            { _id: (new ObjectID(tweetUUID)) },
-            { $push: { retweetedNoComment: { userUUID: retweetUserID } }, $inc: { numOfRetweetsWithNoComment: 1 } }
+            { _id: (new ObjectID(cleanTweetUUID)) },
+            { $push: { retweetedNoComment: { userUUID: (new ObjectID(cleanUserID)) } }, $inc: { numOfRetweetsWithNoComment: 1 } }
           ).then(() => {
 
             res.json("Retweet documented!");
@@ -156,17 +176,17 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
         }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove retweet from user
 
 
-      } else {
+      } else { //if already retweeted with no comment, pulls the retweet from the user's retweets arr and from the tweet's retweet arr
 
 
         User.update(
-          { _id: retweetUserID }, //arguments object
-          { $pull: { retweets: { tweetUUID: tweetUUID } } }
+          { _id: (new ObjectID(cleanUserID)) }, //arguments object
+          { $pull: { retweets: { tweetUUID: cleanTweetUUID } } }
         ).then(() => {
 
           Tweet.update(
-            { _id: (new ObjectID(tweetUUID)) },
-            { $pull: { retweetedNoComment: { userUUID: retweetUserID } }, $inc: { numOfRetweetsWithNoComment: -1 } }
+            { _id: (new ObjectID(cleanTweetUUID)) },
+            { $pull: { retweetedNoComment: { userUUID: (new ObjectID(cleanUserID)) } }, $inc: { numOfRetweetsWithNoComment: -1 } }
           ).then(() => {
 
             res.json("Retweet removed!");
@@ -182,20 +202,20 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
 })
 
 
+//Likes a post as a certain user
 router.route("/like").post((req, res) => {
 
-  const inputTweetUUID = req.body.tweetUUID;
-
-  const userUUID = req.body.userID;
+  const cleanTweetUUID = xss(req.body.tweetUUID);
+  const cleanUserID = xss(req.body.userID);
 
   User.update(
-    { _id: (new ObjectID(userUUID)) },
-    { $push: { likedTweets: { tweetUUID: inputTweetUUID, date: new Date() } } }
+    { _id: (new ObjectID(cleanUserID)) },
+    { $push: { likedTweets: { tweetUUID: cleanTweetUUID, date: new Date() } } }
   ).then(() => {
 
     Tweet.update(
-      { _id: (new ObjectID(inputTweetUUID)) },
-      { $push: { likedBy: { userUUID: userUUID } }, $inc: { numOfLikes: 1 } }
+      { _id: (new ObjectID(cleanTweetUUID)) },
+      { $push: { likedBy: { userUUID: cleanUserID } }, $inc: { numOfLikes: 1 } }
     ).then(() => res.json("Tweet updated likes"))
       .catch((err) => res.status(400).json("Error: " + err));
   })
@@ -206,18 +226,17 @@ router.route("/like").post((req, res) => {
 
 router.route("/unlike").post((req, res) => {
 
-  const inputTweetUUID = req.body.tweetUUID;
-
-  const userUUID = req.body.userID;
+  const cleanTweetUUID = xss(req.body.tweetUUID);
+  const cleanUserID = xss(req.body.userID);
 
   User.update(
-    { _id: (new ObjectID(userUUID)) },
-    { $pull: { likedTweets: { tweetUUID: inputTweetUUID } } }
+    { _id: (new ObjectID(cleanUserID)) },
+    { $pull: { likedTweets: { tweetUUID: cleanTweetUUID } } }
   ).then(() => {
 
     Tweet.update(
-      { _id: (new ObjectID(inputTweetUUID)) },
-      { $pull: { likedBy: { userUUID: userUUID } }, $inc: { numOfLikes: -1 } }
+      { _id: (new ObjectID(cleanTweetUUID)) },
+      { $pull: { likedBy: { userUUID: cleanUserID } }, $inc: { numOfLikes: -1 } }
     ).then(() => res.json("Tweet updated likes"))
       .catch((err) => res.status(400).json("Error: " + err));
   })
@@ -233,7 +252,10 @@ router.route("/unlike").post((req, res) => {
  */
 router.route("/isLiked").get((req, res) => {
 
-  Tweet.find({ "likedBy.userUUID": req.query.userID, _id: (new ObjectID(req.query.tweetUUID)) })
+  const cleanUserID = xss(req.query.userID);
+  const cleanTweetUUID = xss(req.query.tweetUUID);
+
+  Tweet.find({ "likedBy.userUUID": cleanUserID, _id: (new ObjectID(cleanTweetUUID)) })
     .then((like) => res.json(like.length))
     .catch((err) => res.status(400).json("Error: " + err));
 })
@@ -245,7 +267,11 @@ router.route("/isLiked").get((req, res) => {
 
 router.route("/add").post((req, res) => {
 
-  const tweet = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
+  const cleanUserID = xss(req.body.userID);
+  const cleanTweetBody = xss(req.body.tweetBody);
+
+
+  const tweet = { userID: cleanUserID, tweetBody: cleanTweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
 
 
   const newTweet = new Tweet(tweet);
@@ -253,7 +279,6 @@ router.route("/add").post((req, res) => {
   newTweet
     .save()
     .then(() => {
-      res.json("Tweet added!");
 
       //Add to the user who made tweet
       User.update(
@@ -268,6 +293,11 @@ router.route("/add").post((req, res) => {
 });
 
 
+/**
+ * Returns difference of two dates A and B, where return val is positive if b is more recent than a. 
+ * @param {Date} a 
+ * @param {Date} b 
+ */
 function dateSort(a, b) {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
 }
@@ -278,7 +308,9 @@ function dateSort(a, b) {
 
 router.route('/getLikes').get((req, res) => {
 
-  User.find(req.query).then((user) => {
+  const cleanUserID = xss(req.query._id);
+
+  User.find({ _id: new ObjectID(cleanUserID) }).then((user) => {
     if (!user[0].likedTweets) res.json("user doesnt exist");
     likes = user[0].likedTweets.sort(dateSort);
 
