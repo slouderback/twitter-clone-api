@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const crypto = require('crypto');
 
+var xss = require('xss');
+
 
 let User = require('../models/user.model');
 
@@ -27,9 +29,12 @@ const hashPassword = (pwd) => {
 
 router.route('/add').post((req, res) => {
 
-  req.body.password = hashPassword(req.body.password);
 
-  const newUser = new User(req.body);
+  const cleanUserName = xss(req.body.username);
+  const cleanPassword = xss(req.body.password);
+
+
+  const newUser = new User({ username: cleanUserName, password: hashPassword(cleanPassword) });
 
   // const newUser = new User({username});
 
