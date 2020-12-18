@@ -61,18 +61,14 @@ router.route("/addRetweetWithComment").post((req, res) => {
 
   const rt = { userID: req.body.userID, tweetBody: req.body.tweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
 
-
   const retweetUserID = (new ObjectID(req.body.userID));
   const tweetUUID = (new ObjectID(req.body.tweetUUID));
 
   const newRetweet = new Tweet(rt);
 
-
   newRetweet
     .save()
     .then(() => {
-
-
       User.update(
         { _id: retweetUserID }, //arguments object
         { $push: { retweets: { tweetUUID: newRetweet._id } } }
@@ -160,10 +156,6 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
         }).catch((err) => res.status(400).json("Error: " + err)); //TODO: if this fails, remove retweet from user
 
 
-
-
-
-
       } else {
 
 
@@ -184,17 +176,8 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
 
 
       }
-
-
     })
     .catch((err) => res.status(400).json("Error: " + err));
-
-
-
-
-
-
-
 
 })
 
@@ -207,7 +190,7 @@ router.route("/like").post((req, res) => {
 
   User.update(
     { _id: (new ObjectID(userUUID)) },
-    { $push: { likedTweets: { tweetUUID: inputTweetUUID } } }
+    { $push: { likedTweets: { tweetUUID: inputTweetUUID, date: new Date() } } }
   ).then(() => {
 
     Tweet.update(
@@ -243,16 +226,17 @@ router.route("/unlike").post((req, res) => {
 })
 
 
+/**
+ * Takes in a userID and a tweetID and returns whether the user has liked this specific tweet
+ * 
+ * Used for showing if a tweet's like button is red or not
+ */
 router.route("/isLiked").get((req, res) => {
-
-
 
   Tweet.find({ "likedBy.userUUID": req.query.userID, _id: (new ObjectID(req.query.tweetUUID)) })
     .then((like) => res.json(like.length))
     .catch((err) => res.status(400).json("Error: " + err));
 })
-
-
 
 
 /**
@@ -279,14 +263,37 @@ router.route("/add").post((req, res) => {
         res.json("Tweet added to user");
       })
         .catch((err) => res.status(400).json("Error: " + err));
-
-
-
     })
     .catch((err) => res.status(400).json("Error: " + err));
-
-
-
 });
+
+
+function dateSort(a, b) {
+  return new Date(b.date).getTime() - new Date(a.date).getTime();
+}
+
+/**
+ * Takes in a userID and returns all the tweets they've liked
+ */
+
+router.route('/getLikes').get((req, res) => {
+
+  User.find(req.query).then((user) => {
+    if (!user[0].likedTweets) res.json("user doesnt exist");
+    likes = user[0].likedTweets.sort(dateSort);
+
+    var tweetIDs = [];
+    for (var i = 0; i < likes.length; i++) {
+      if (likes[i].date) tweetIDs.push(likes[i].tweetUUID);
+    }
+
+    Tweet.find({ _id: { $in: tweetIDs } }, "userID tweetBody numOfLikes numOfRetweetsWithComment numOfRetweetsWithNoComment createdAt ").then((tweets) => {
+      res.json(tweets);
+    }).catch((err) => res.status(400).json("Error: " + err))
+  }).catch((err) => res.status(400).json("Error: " + err))
+})
+
+
+
 
 module.exports = router;
