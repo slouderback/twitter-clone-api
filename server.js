@@ -18,8 +18,15 @@ connection.once("open", () => {
 
 const tweetsRouter = require("./routes/tweet");
 const usersRouter = require("./routes/users");
-app.use('/tweets', tweetsRouter);
+const retweetsRouter = require("./routes/retweet");
+const likesRouter = require("./routes/like");
+
+
+
+app.use("/tweets", tweetsRouter);
 app.use("/users", usersRouter);
+app.use("/retweet", retweetsRouter);
+app.use("/like", likesRouter);
 
 app.listen(port, () => {
 	console.log(`Server is running on port: ${port}`);
