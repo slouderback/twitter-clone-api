@@ -15,10 +15,11 @@ router.route('/').get((req, res) => {
 
 
 
-const hashPassword = (pwd) => {
+//hashes the password with the salt added to the beginning
+const hashPassword = (salt, pwd) => {
   const hash = crypto.createHash('sha256');
 
-  pwd = hash.update(pwd).digest('hex');
+  pwd = hash.update(salt + pwd).digest('hex');
   hash.end();
 
   return pwd;
@@ -33,11 +34,21 @@ router.route('/add').post((req, res) => {
 
   const cleanUserName = mongoSanitize.sanitize(xss(req.body.username));
   const cleanPassword = mongoSanitize.sanitize(xss(req.body.password));
+  const cleanBirthdate = mongoSanitize.sanitize(xss(req.body.birthdate));
+  const cleanName = mongoSanitize.sanitize(xss(req.body.name));
+  const cleanHandle = mongoSanitize.sanitize(xss(req.body.handle));
+  //randomly generated salt
+  const salt = crypto.randomBytes(16).toString('hex');
 
 
-  const newUser = new User({ username: cleanUserName, password: hashPassword(cleanPassword) });
+  const newUser = new User({
+    username: cleanUserName,
+    password: hashPassword(salt, cleanPassword), salt: salt,
+    birthdate: cleanBirthdate,
+    name: cleanName,
+    handle: cleanHandle
+  });
 
-  // const newUser = new User({username});
 
   newUser.save()
     .then(() => res.json('User added!'))
