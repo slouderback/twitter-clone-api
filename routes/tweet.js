@@ -3,6 +3,8 @@ let Tweet = require("../models/tweet.model");
 let User = require("../models/user.model");
 
 var xss = require('xss');
+var mongoSanitize = require('express-mongo-sanitize');
+
 var ObjectID = require('mongodb').ObjectID;
 
 
@@ -20,7 +22,7 @@ var ObjectID = require('mongodb').ObjectID;
  */
 router.route("/getUserTweets").get((req, res) => {
 
-  var cleanUserID = xss(req.query.userID);
+  var cleanUserID = mongoSantize.sanitize(xss(req.query.userID));
 
 
   //Parms are userID => {userID: userID}
@@ -38,7 +40,7 @@ router.route("/getUserTweets").get((req, res) => {
  */
 router.route("/getTweet").get((req, res) => {
 
-  const cleanTweetUUID = xss(req.query.tweetUUID);
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.query.tweetUUID));
 
 
   Tweet.find({ _id: cleanTweetUUID })
@@ -65,9 +67,9 @@ router.route("/getTweet").get((req, res) => {
  */
 router.route("/addRetweetWithComment").post((req, res) => {
 
-  const cleanUserUUID = xss(req.body.userID);
-  const cleanTweetUUID = xss(req.body.tweetUUID);
-  const cleanTweetBody = xss(req.body.tweetBody);
+  const cleanUserUUID = mongoSanitize.sanitize(xss(req.body.userID));
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.body.tweetUUID));
+  const cleanTweetBody = mongoSanitize.sanitize(xss(req.body.tweetBody));
 
   const retweetUserIDObject = (new ObjectID(cleanUserUUID));
   const tweetIDObject = (new ObjectID(cleanTweetUUID));
@@ -108,8 +110,8 @@ router.route("/addRetweetWithComment").post((req, res) => {
  */
 router.route("/isRetweeted").get((req, res) => {
 
-  const cleanTweetUUID = xss(req.query.tweetUUID);
-  const cleanUserID = xss(req.query.userID);
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.query.tweetUUID));
+  const cleanUserID = mongoSanitize.sanitize(xss(req.query.userID));
 
   Tweet.find({ _id: (new ObjectID(cleanTweetUUID)), "retweetedNoComment.userUUID": cleanUserID })
     .then((tweet) => {
@@ -145,8 +147,8 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
   //then increment tweet retweetswithnocomment
 
   //then add tweetid to user retweets
-  const cleanTweetUUID = xss(req.body.tweetUUID);
-  const cleanUserID = xss(req.body.userID);
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.body.tweetUUID));
+  const cleanUserID = mongoSanitize.sanitize(xss(req.body.userID));
 
 
   Tweet.find({ _id: (new ObjectID(cleanTweetUUID)), "retweetedNoComment.userUUID": cleanUserID })
@@ -205,8 +207,8 @@ router.route("/addRetweetWithNoComment").post((req, res) => {
 //Likes a post as a certain user
 router.route("/like").post((req, res) => {
 
-  const cleanTweetUUID = xss(req.body.tweetUUID);
-  const cleanUserID = xss(req.body.userID);
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.body.tweetUUID));
+  const cleanUserID = mongoSanitize.sanitize(xss(req.body.userID));
 
   User.update(
     { _id: (new ObjectID(cleanUserID)) },
@@ -226,8 +228,8 @@ router.route("/like").post((req, res) => {
 
 router.route("/unlike").post((req, res) => {
 
-  const cleanTweetUUID = xss(req.body.tweetUUID);
-  const cleanUserID = xss(req.body.userID);
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.body.tweetUUID));
+  const cleanUserID = mongoSanitize.sanitize(xss(req.body.userID));
 
   User.update(
     { _id: (new ObjectID(cleanUserID)) },
@@ -252,8 +254,8 @@ router.route("/unlike").post((req, res) => {
  */
 router.route("/isLiked").get((req, res) => {
 
-  const cleanUserID = xss(req.query.userID);
-  const cleanTweetUUID = xss(req.query.tweetUUID);
+  const cleanUserID = mongoSanitize.sanitize(xss(req.query.userID));
+  const cleanTweetUUID = mongoSanitize.sanitize(xss(req.query.tweetUUID));
 
   Tweet.find({ "likedBy.userUUID": cleanUserID, _id: (new ObjectID(cleanTweetUUID)) })
     .then((like) => res.json(like.length))
@@ -267,8 +269,8 @@ router.route("/isLiked").get((req, res) => {
 
 router.route("/add").post((req, res) => {
 
-  const cleanUserID = xss(req.body.userID);
-  const cleanTweetBody = xss(req.body.tweetBody);
+  const cleanUserID = mongoSanitize.sanitize(xss(req.body.userID));
+  const cleanTweetBody = mongoSanitize.sanitize(xss(req.body.tweetBody));
 
 
   const tweet = { userID: cleanUserID, tweetBody: cleanTweetBody, numOfLikes: 0, numOfRetweetsWithComment: 0, numOfRetweetsWithNoComment: 0 };
@@ -308,7 +310,7 @@ function dateSort(a, b) {
 
 router.route('/getLikes').get((req, res) => {
 
-  const cleanUserID = xss(req.query._id);
+  const cleanUserID = mongoSanitize.sanitize(xss(req.query._id));
 
   User.find({ _id: new ObjectID(cleanUserID) }).then((user) => {
     if (!user[0].likedTweets) res.json("user doesnt exist");

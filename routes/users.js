@@ -2,6 +2,7 @@ const router = require('express').Router();
 const crypto = require('crypto');
 
 var xss = require('xss');
+var mongoSanitize = require('express-mongo-sanitize');
 
 
 let User = require('../models/user.model');
@@ -30,8 +31,8 @@ const hashPassword = (pwd) => {
 router.route('/add').post((req, res) => {
 
 
-  const cleanUserName = xss(req.body.username);
-  const cleanPassword = xss(req.body.password);
+  const cleanUserName = mongoSanitize.sanitize(xss(req.body.username));
+  const cleanPassword = mongoSanitize.sanitize(xss(req.body.password));
 
 
   const newUser = new User({ username: cleanUserName, password: hashPassword(cleanPassword) });
